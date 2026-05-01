@@ -1,0 +1,36 @@
+# ============================================================
+# data_collector 统一配置文件
+# 说明：所有可配置参数集中管理，缺失字段使用默认值
+# ============================================================
+
+fetcher:
+  timeout: 30              # 请求超时（秒）
+  max_retries: 3           # 最大重试次数
+  retry_backoff_base: 2    # 指数退避基数（秒）
+  user_agent_rotation: true # 是否启用 UA 随机轮换
+  dynamic_wait_time: 3.0   # 动态渲染等待时间（秒），仅 Playwright 模式
+
+compliance:
+  request_delay_min: 1.0   # 最小请求间隔（秒）
+  request_delay_max: 3.0   # 最大请求间隔（秒）
+  forbidden_keywords:      # 禁止采集的字段关键词
+    - phone
+    - mobile
+    - id_card
+    - password
+    - email
+  allowed_domains: []      # 允许采集的域名白名单，空=不限制
+
+cleaner:
+  dedup_fields: ["url"]    # 默认去重字段
+  persist_dedup: false     # 是否持久化去重记录
+  persist_path: "dedup.db" # 去重持久化文件路径
+
+saver:
+  export_format: "xlsx"    # 默认导出格式: xlsx / csv / word
+  export_path: "output"    # 导出目录
+  log_level: "INFO"        # 日志级别
+  log_path: "logs/app.log"
+
+parser:
+  default_selector: "css"  # 默认选择器类型: css / xpath
