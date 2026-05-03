@@ -101,41 +101,75 @@ class Saver:
 
         self._export_path.mkdir(parents=True, exist_ok=True)
 
-        df = pd.DataFrame(data)
-        df.to_excel(
-            str(file_path),
-            sheet_name=sheet_name,
-            index=False,
-            engine="openpyxl",
-        )
+        # 验证数据
+        if not data:
+            logger.warning("[Saver] 数据为空，创建空Excel文件")
+            df = pd.DataFrame()
+        else:
+            # 确保所有记录都是字典
+            valid_data = []
+            for record in data:
+                if isinstance(record, dict):
+                    valid_data.append(record)
+                else:
+                    logger.warning("[Saver] 跳过非字典类型的记录: %s", type(record))
+
+            if not valid_data:
+                logger.warning("[Saver] 所有记录格式不正确，创建空Excel文件")
+                df = pd.DataFrame()
+            else:
+                df = pd.DataFrame(valid_data)
+
+        # 写入Excel
+        try:
+            df.to_excel(
+                str(file_path),
+                sheet_name=sheet_name,
+                index=False,
+                engine="openpyxl",
+            )
+        except Exception as exc:
+            logger.error("[Saver] Excel写入失败: %s", exc)
+            raise
+
+        # 如果没有数据，直接返回
+        if df.empty:
+            logger.info("[Saver] 导出空Excel文件: %s", file_path)
+            return str(file_path)
 
         # Auto column width, bold header, freeze top row, auto-filter
-        from openpyxl import load_workbook
+        try:
+            from openpyxl import load_workbook
 
-        wb = load_workbook(str(file_path))
-        ws = wb.active
-        if ws is None:
-            raise RuntimeError("Failed to open workbook after writing")
+            wb = load_workbook(str(file_path))
+            ws = wb.active
+            if ws is None:
+                raise RuntimeError("Failed to open workbook after writing")
 
-        for col_cells in ws.columns:
-            max_len = 0
-            col_letter = col_cells[0].column_letter
-            for cell in col_cells:
-                if cell.value:
-                    cell_len = len(str(cell.value))
-                    max_len = max(max_len, cell_len)
-                # Bold header
-                if cell.row == 1:
-                    from openpyxl.styles import Font
-                    cell.font = Font(bold=True)
-            adjusted = min(max_len + 2, 50)
-            ws.column_dimensions[col_letter].width = adjusted
+            for col_cells in ws.columns:
+                max_len = 0
+                col_letter = col_cells[0].column_letter
+                for cell in col_cells:
+                    if cell.value:
+                        cell_len = len(str(cell.value))
+                        max_len = max(max_len, cell_len)
+                    # Bold header
+                    if cell.row == 1:
+                        from openpyxl.styles import Font
+                        cell.font = Font(bold=True)
+                adjusted = min(max_len + 2, 50)
+                ws.column_dimensions[col_letter].width = adjusted
 
-        ws.freeze_panes = "A2"
-        ws.auto_filter.ref = ws.dimensions
+            ws.freeze_panes = "A2"
+            ws.auto_filter.ref = ws.dimensions
 
-        wb.save(str(file_path))
-        logger.info("[Saver] Exported %d records to %s", len(data), file_path)
+            wb.save(str(file_path))
+            logger.info("[Saver] Exported %d records to %s", len(data), file_path)
+
+        except Exception as exc:
+            logger.warning("[Saver] Excel格式化失败（文件已保存）: %s", exc)
+            # 即使格式化失败，文件应该已经创建了
+
         return str(file_path)
 
     def to_csv(
